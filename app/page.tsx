@@ -28,7 +28,16 @@ export default function HomePage() {
               모아 왜 뜨는지와 얼마나 빠르게 확산되는지까지 보여주는 웹앱을 목표로 합니다.
             </p>
             <div className="hero-actions">
-              <Link className="primary-button link-button" href="#trend-grid">
+              <Link className="primary-button link-button" href="/analysis">
+                트렌드 분석 (Live)
+              </Link>
+              <Link className="secondary-button link-button" href="/keywords">
+                키워드 랭킹 (Live)
+              </Link>
+              <Link className="secondary-button link-button" href="/recommend">
+                트렌드 추천 (Live)
+              </Link>
+              <Link className="secondary-button link-button" href="#trend-grid">
                 트렌드 둘러보기
               </Link>
               <Link className="secondary-button link-button" href="/docs/google-api-research">

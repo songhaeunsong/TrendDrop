@@ -17,6 +17,7 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: 15px;
 }
 
 body {
@@ -189,7 +190,7 @@ h3,
 
 .eyebrow,
 .section-kicker {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   letter-spacing: 0.18em;
   color: var(--accent);
   font-weight: 700;
@@ -198,8 +199,8 @@ h3,
 h1 {
   margin: 14px 0 16px;
   max-width: 9.5em;
-  font-size: clamp(2.5rem, 5vw, 4.8rem);
-  line-height: 0.98;
+  font-size: clamp(1.9rem, 3.8vw, 3.2rem);
+  line-height: 1.05;
 }
 
 h2,
@@ -209,16 +210,16 @@ h3 {
 }
 
 h2 {
-  font-size: clamp(1.75rem, 3vw, 2.8rem);
+  font-size: clamp(1.35rem, 2.3vw, 2rem);
 }
 
 h3 {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
 }
 
 .hero-text {
   max-width: 700px;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   line-height: 1.7;
 }
 
@@ -259,7 +260,7 @@ h3 {
 
 .pulse-score strong {
   display: block;
-  font-size: 4.5rem;
+  font-size: 3.4rem;
   line-height: 1;
 }
 
@@ -331,7 +332,7 @@ h3 {
 }
 
 .trend-rank {
-  font-size: 2rem;
+  font-size: 1.6rem;
   line-height: 1;
 }
 
@@ -339,11 +340,11 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
   background: rgba(255, 107, 44, 0.1);
   color: var(--accent);
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
@@ -369,17 +370,17 @@ h3 {
 }
 
 .stat-value {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
 }
 
 .stat-label {
   margin-top: 2px;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
 }
 
 .trend-source {
-  font-size: 0.92rem;
+  font-size: 0.86rem;
 }
 
 .insight-layout {
@@ -425,7 +426,7 @@ h3 {
 
 .timeline-step h4 {
   margin: 2px 0 6px;
-  font-size: 1.02rem;
+  font-size: 0.95rem;
 }
 
 .watch-keyword strong {
@@ -602,3 +603,49 @@ h3 {
   }
 }
 
+
+.video-title-link:hover {
+  color: var(--accent);
+}
+
+.keyword-badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid var(--line);
+}
+
+.badge-search {
+  background: rgba(255, 107, 44, 0.14);
+  color: var(--accent);
+}
+
+.badge-tag {
+  background: rgba(15, 139, 141, 0.12);
+  color: var(--accent-3);
+}
+
+.badge-title {
+  background: rgba(255, 207, 90, 0.25);
+  color: #8a6400;
+}
+
+.badge-comment {
+  background: rgba(33, 23, 15, 0.06);
+  color: var(--muted);
+}
+
+.category-keyword-group {
+  margin-top: 14px;
+}
+
+.category-keyword-group .filter-row {
+  margin-top: 6px;
+}
+
+.category-keyword-group .filter-chip {
+  padding: 7px 12px;
+  font-size: 0.85rem;
+}
