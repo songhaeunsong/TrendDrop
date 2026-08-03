@@ -1,21 +1,20 @@
 /**
- * Google Trends 한국 급상승 검색어 — 공식 RSS.
- * 5번째 후보 소스이자, 뉴스/대중화 신호. RSS라 스크래핑 붕괴에서 자유로운 안정 기둥.
- * (기존 jobs/trending.ts 와 같은 피드. 여기선 raw_items 형식으로 통합 수집.)
+ * Google Trends 한국 급상승 검색어 — 공식 RSS. (뉴스/대중화 신호 / trend-collector 이전)
+ * meta에 rank·approxTraffic·newsTitles 를 담아 둔다(나중에 뜻 설명 등에 활용 가능).
  */
-import { clean, fetchText, type RawItem, type SourceAdapter } from "./types.js";
+import { clean, fetchText } from "./http.mjs";
 
 const RSS_URL = "https://trends.google.com/trending/rss?geo=KR";
 
-function extractTag(block: string, tag: string): string | undefined {
+function extractTag(block, tag) {
   const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
   return m ? clean(m[1]) : undefined;
 }
 
-function extractAll(block: string, tag: string): string[] {
+function extractAll(block, tag) {
   const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "gi");
-  const out: string[] = [];
-  let m: RegExpExecArray | null;
+  const out = [];
+  let m;
   while ((m = re.exec(block)) !== null) {
     const t = clean(m[1]);
     if (t) out.push(t);
@@ -23,11 +22,11 @@ function extractAll(block: string, tag: string): string[] {
   return out;
 }
 
-async function collect(): Promise<RawItem[]> {
+export async function collect() {
   const xml = await fetchText(RSS_URL);
-  const out: RawItem[] = [];
+  const out = [];
   const itemRe = /<item\b[^>]*>([\s\S]*?)<\/item>/gi;
-  let m: RegExpExecArray | null;
+  let m;
   let rank = 0;
   while ((m = itemRe.exec(xml)) !== null) {
     const block = m[1];
@@ -47,5 +46,3 @@ async function collect(): Promise<RawItem[]> {
   }
   return out;
 }
-
-export const gtrends: SourceAdapter = { name: "gtrends", collect };
