@@ -30,8 +30,6 @@ export const WEIGHTS = {
   "dcbest|title": 4,
   "theqoo|title": 4,
   "instiz|title": 4,
-  "natepann|title": 4,
-  "natepann|comment": 1,
 };
 
 const DEFAULTS = {

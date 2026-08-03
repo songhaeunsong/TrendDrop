@@ -11,7 +11,7 @@
 ```
 매시 정각 (launchd → run-hourly.sh)
     │
-    ├─▶ collect.mjs        6개 소스 병렬 스크래핑 → rising_raw_items 에 축적
+    ├─▶ collect.mjs        5개 소스 병렬 스크래핑 → rising_raw_items 에 축적
     │
     └─▶ rank-popular.mjs
            ├─ 최근 6시간 원문을 읽어 토큰화
@@ -26,16 +26,17 @@
 
 ## 2. 수집 — `collect.mjs`
 
-6개 소스를 `Promise.all`로 동시에 긁는다. 한 소스가 실패해도 나머지는 그대로 저장된다.
+5개 소스를 `Promise.all`로 동시에 긁는다. 한 소스가 실패해도 나머지는 그대로 저장된다.
 
 | 소스 | 대상 | 방식 | 저장 단위(unit) |
 |---|---|---|---|
 | `dcbest` | 디시인사이드 실시간 베스트 | HTML 스크래핑 | title |
 | `theqoo` | 더쿠 핫게시판 | HTML 스크래핑 | title |
 | `instiz` | 인스티즈 실시간 인기 | HTML 스크래핑 | title |
-| `natepann` | 네이트판 오늘의 톡 랭킹 | HTML 스크래핑 | title + comment(베플) |
 | `youtube` | 인기 급상승 영상 20개 + 상위 8개 영상의 댓글 15개씩 | 공식 Data API | title + comment |
 | `gtrends` | 구글 트렌드 한국 급등검색어 20개 | 공식 RSS | title |
+
+> **네이트판은 2026-08-03에 제외했다.** 사연·신변잡기 위주라 트렌드 키워드가 거의 안 나왔다 — `남편`·`시어머니`·`강아지`처럼 LLM 판정에서 대부분 탈락하는 일반명사만 올라왔다. 수집기(`sources/natepann.mjs`)와 기존 수집분 299행을 함께 지웠다.
 
 수집한 행은 **1시간 버킷**(정시로 내림)으로 묶여 `rising_raw_items`에 들어간다.
 
@@ -76,7 +77,7 @@ UNIQUE (source, text_hash, bucket_at)
 
 ### 4-1. 창(window)
 
-기본 **최근 6시간**(약 1,200~1,800행). 1시간이면 표본이 300행뿐이라 순위가 뭉갠다.
+기본 **최근 6시간**(약 900~1,500행). 1시간이면 표본이 250행 안팎이라 순위가 뭉갠다.
 
 **버킷 개수가 아니라 시계 기준이다.** 수집이 빠진 시간대가 있어도 과거로 더 뻗지 않고 표본만 줄어든다 — "6시간 창"이 실제로 6시간을 뜻한다. `popular_runs`에 `window_hours`(창 길이)와 `buckets`(그 창에 실제로 있던 버킷 수)를 둘 다 남기므로, 둘을 비교하면 그 시점에 수집이 몇 회 빠졌는지 바로 보인다.
 
@@ -101,9 +102,7 @@ score = Σ (소스별 가중치 × 참여도 보정)  ×  교차 소스 보너�
 | `dcbest \| title` | 4 |
 | `theqoo \| title` | 4 |
 | `instiz \| title` | 4 |
-| `natepann \| title` | 4 |
 | `youtube \| comment` | 3 |
-| `natepann \| comment` | 1 |
 
 **참여도 보정** — meta가 있을 때만 곱해지고, 없으면 ×1이다. 과거 데이터와 신규 데이터가 같은 코드로 돌아간다.
 
@@ -112,7 +111,7 @@ score = Σ (소스별 가중치 × 참여도 보정)  ×  교차 소스 보너�
 | `gtrends` | 검색량 기준. 500+를 ×1.0으로 놓고 로그 스케일 | ×0.7 ~ ×1.8 |
 | `youtube \| title` | 시간당 조회수 + 좋아요 | ×1 ~ ×3.5 |
 | `youtube \| comment` | 댓글 좋아요(×1~2) × 그 영상의 확산속도 | ×1 ~ ×7 |
-| 커뮤니티 4곳 | 조회수·추천수를 수집하지 않음 | 항상 ×1 |
+| 커뮤니티 3곳 | 조회수·추천수를 수집하지 않음 | 항상 ×1 |
 
 **교차 소스 보너스** — 2개 이상 소스에 등장하면 ×1.25.
 
@@ -146,7 +145,7 @@ score = Σ (소스별 가중치 × 참여도 보정)  ×  교차 소스 보너�
 | 유형 | 예시 |
 |---|---|
 | 문법 조각 | `같아서` `혼자` `하면` `나오면` `대한` |
-| 장르·일반명사 | `배우` `드라마` `영화` `남편` `출연진` |
+| 장르·일반명사 | `배우` `드라마` `영화` `출연진` `신인` |
 | 영어 파편 | `like`(원문: "like i do") `vocals` |
 | 맥락 없는 지역명 | `일본`(원문: "일본 여학생들의 체육복") |
 
@@ -194,7 +193,7 @@ score = Σ (소스별 가중치 × 참여도 보정)  ×  교차 소스 보너�
 4. keep=false 제거
 5. canonical 병합   같은 이름이면 점수 높은 쪽 하나만 남김
 6. 카테고리 계수    (현재 전부 1.0)
-7. 재정렬 → top30
+7. 재정렬 → top10
 ```
 
 **병합 시 점수를 합산하지 않는다.** `김윤희`(40)와 `아나운서`(40)는 같은 원문에서 나온 조각이라, 합치면(80) 이중계산이 된다. 높은 쪽 하나만 남기고 이름만 바꾼다.
@@ -253,7 +252,7 @@ LLM이 점수를 직접 매기면 같은 `하이브`가 이번엔 85, 다음엔 
 
 | 설계 | 시간당 입출력 | Sonnet 5 | Haiku 4.5 |
 |---|---|---|---|
-| A. 원문 전체 (1,200행) | 12,500 / 4,000 | $71 | $24 |
+| A. 원문 전체 (900행) | 12,500 / 4,000 | $71 | $24 |
 | **B. 단어 + 예문 1줄** ← 채택 | 3,600 / 1,400 | $23 | $7.7 |
 | C. 단어만 | 1,200 / 1,050 | $14 | $4.7 |
 
@@ -266,7 +265,7 @@ LLM이 점수를 직접 매기면 같은 `하이브`가 이번엔 85, 다음엔 
 이 파이프라인이 쓰는 테이블은 4개가 전부다. 모두 `store.mjs`가 멱등하게 생성한다(`CREATE TABLE IF NOT EXISTS` + `ALTER TABLE ADD COLUMN IF NOT EXISTS`).
 
 ```
-rising_raw_items        수집 원문        1,208행 (최근 6시간)
+rising_raw_items        수집 원문          909행 (최근 6시간)
 popular_runs            랭킹 실행 이력       1행
 popular_snapshots       실행별 top10       10행
 popular_term_verdicts   LLM 판정 캐시      75행
@@ -279,7 +278,7 @@ popular_term_verdicts   LLM 판정 캐시      75행
 | 컬럼 | 타입 | 내용 |
 |---|---|---|
 | `id` | bigserial PK | |
-| `source` | text NOT NULL | dcbest / theqoo / instiz / natepann / youtube / gtrends |
+| `source` | text NOT NULL | dcbest / theqoo / instiz / youtube / gtrends |
 | `unit` | text NOT NULL | title / comment |
 | `text` | text NOT NULL | 원문 한 줄 |
 | `text_hash` | text NOT NULL | sha1(text) — 중복 판별용 |
@@ -362,7 +361,7 @@ DELETE FROM popular_term_verdicts WHERE term = '일본';
 
 | 상황 | 동작 |
 |---|---|
-| `ANTHROPIC_API_KEY` 없음 | 필터 건너뛰고 원본 top30 저장 |
+| `ANTHROPIC_API_KEY` 없음 | 필터 건너뛰고 원본 top10 저장 |
 | API 오류·타임아웃 | 캐시된 판정만 적용, 나머지는 통과 |
 | `stop_reason: refusal` | throw → 위 오류 경로 |
 | `--no-llm` 플래그 | 호출 자체를 안 함 (비교용) |
@@ -402,7 +401,7 @@ node trend-rising/backfill-popular.mjs --reset
 
 `~/Library/LaunchAgents/com.trendrising.hourly.plist`가 매시 정각(`Minute: 0`)에 `run-hourly.sh`를 실행한다.
 
-**맥이 꺼지거나 잠들면 수집도 LLM 호출도 안 된다.** 비용은 안 나가지만 데이터에 구멍이 생긴다. launchd는 놓친 시간을 하나하나 채우지 않고 깨어날 때 한 번만 따라잡는다. 실제로 147버킷 중 28개 시점에서 수집 누락이 있었다.
+**맥이 꺼지거나 잠들면 수집도 LLM 호출도 안 된다.** 비용은 안 나가지만 데이터에 구멍이 생긴다. launchd는 놓친 시간을 하나하나 채우지 않고 깨어날 때 한 번만 따라잡는다. 삭제 전 147버킷 기준으로 28개 시점에서 수집 누락이 있었다.
 
 ---
 
@@ -419,7 +418,7 @@ node trend-rising/backfill-popular.mjs --reset
 | 파일 | 역할 | API 호출 |
 |---|---|---|
 | `collect.mjs` | 6소스 병렬 수집 → `rising_raw_items` | YouTube |
-| `sources/*.mjs` | 소스별 스크래퍼 (dcbest, theqoo, instiz, natepann, youtube, gtrends, http) | |
+| `sources/*.mjs` | 소스별 스크래퍼 (dcbest, theqoo, instiz, youtube, gtrends, http) | |
 | `tokenize.mjs` | 문장 → 단어. 조사 제거 + 불용어 | ❌ |
 | `popular.mjs` | 인기 랭킹 로직 (가중치·보정·보너스) | ❌ |
 | `verdict.mjs` | LLM 판정 — 모델 설정·프롬프트·스키마·호출·캐시 적용 | ✅ |

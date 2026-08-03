@@ -1,5 +1,5 @@
 /**
- * 수집 오케스트레이션 — 6소스를 병렬 스크래핑해 1시간 버킷으로 rising_raw_items에 축적.
+ * 수집 오케스트레이션 — 5소스를 병렬 스크래핑해 1시간 버킷으로 rising_raw_items에 축적.
  * trend-collector src/jobs/collect-sources.ts 에서 이전(SQLite→Postgres).
  *
  * 실행:  node trend-rising/collect.mjs
@@ -11,16 +11,15 @@ import { createHash } from "node:crypto";
 import { collect as dcbest } from "./sources/dcbest.mjs";
 import { collect as theqoo } from "./sources/theqoo.mjs";
 import { collect as instiz } from "./sources/instiz.mjs";
-import { collect as natepann } from "./sources/natepann.mjs";
 import { collect as youtube } from "./sources/youtube.mjs";
 import { collect as gtrends } from "./sources/gtrends.mjs";
 import { insertRawItems, closeDb } from "./store.mjs";
 
+// 네이트판은 2026-08-03에 제외했다 — 사연·신변잡기 위주라 트렌드 키워드가 거의 안 나왔다.
 const ADAPTERS = [
   ["dcbest", dcbest],
   ["theqoo", theqoo],
   ["instiz", instiz],
-  ["natepann", natepann],
   ["youtube", youtube],
   ["gtrends", gtrends],
 ];
