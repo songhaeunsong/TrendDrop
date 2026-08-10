@@ -2453,3 +2453,344 @@ body {
   }
 }
 
+/* ============================================================ */
+/* 3단계-B: 호버 프리뷰 · 관심 키워드 · 온보딩 (append only)     */
+/* ============================================================ */
+
+/* --- 행 레이아웃: 링크 + 별 토글 나란히, 프리뷰가 목록 밖으로 나오도록 overflow 해제 --- */
+.rank-list {
+  overflow: visible;
+}
+
+.rank-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+/* 프리뷰가 열린 행은 뒤 형제 행 위로 올려 프리뷰가 가려지지 않게 한다. */
+.rank-row.has-preview {
+  z-index: 5;
+}
+
+.rank-row .rank-link {
+  flex: 1;
+  min-width: 0;
+}
+
+.rank-star {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  padding: 0;
+  border: none;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.rank-star:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.rank-star.is-saved {
+  color: var(--accent);
+}
+
+.rank-star:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* --- 호버 프리뷰 카드 --- */
+.rank-preview {
+  position: absolute;
+  top: calc(100% - 6px);
+  left: 8px;
+  right: 8px;
+  z-index: 6;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-hover);
+  animation: td-preview-pop 0.16s var(--spring);
+}
+
+@keyframes td-preview-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rank-preview-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rank-preview-key {
+  font-weight: 700;
+  font-size: 0.98rem;
+}
+
+.rank-preview-cat {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: var(--label-spacing);
+  text-transform: var(--label-transform);
+}
+
+.rank-preview-metrics {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rank-preview-growth {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.rank-preview-why {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.rank-preview-cta {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-3);
+}
+
+/* 터치 기기(호버 불가)에서는 프리뷰를 숨긴다 — 터치는 행 링크가 우선 */
+@media (hover: none) {
+  .rank-preview {
+    display: none;
+  }
+}
+
+/* --- 관심 키워드 섹션 --- */
+.saved-section {
+  display: grid;
+  gap: 8px;
+}
+
+.saved-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: var(--label-spacing);
+  text-transform: var(--label-transform);
+  color: var(--muted);
+}
+
+.saved-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.saved-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.28s var(--spring);
+}
+
+.saved-chip:hover {
+  border-color: var(--glow-line);
+  transform: translateY(-2px);
+}
+
+.saved-chip.is-surge {
+  border-color: var(--glow-line);
+  background: var(--accent-soft);
+}
+
+.saved-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.saved-chip-name {
+  font-weight: 600;
+}
+
+.saved-chip-rank {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.saved-surge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: var(--label-spacing);
+}
+
+/* "내 피드" 토글 (카테고리 탭 안, 아이콘 강조) */
+.category-tab.is-feed {
+  gap: 4px;
+}
+
+.category-tab.is-feed[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--on-accent);
+}
+
+/* --- 온보딩 오버레이 --- */
+.onb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--scrim);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: cmdk-fade 0.16s ease-out;
+}
+
+.onb-dialog {
+  width: min(460px, 100%);
+  padding: 24px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-hover);
+  animation: cmdk-pop 0.2s var(--spring);
+}
+
+.onb-eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: var(--label-spacing);
+  text-transform: var(--label-transform);
+  color: var(--accent);
+}
+
+.onb-title {
+  margin: 0 0 8px;
+  font-family: var(--font-head);
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+
+.onb-sub {
+  margin: 0 0 18px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.onb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.onb-chip {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.onb-chip:hover:not(:disabled) {
+  border-color: var(--glow-line);
+}
+
+.onb-chip.is-active {
+  background: var(--accent-soft);
+  border-color: var(--glow-line);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.onb-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.onb-chip:focus-visible,
+.onb-later:focus-visible,
+.onb-start:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.onb-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.onb-later {
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.onb-start {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.onb-start:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+

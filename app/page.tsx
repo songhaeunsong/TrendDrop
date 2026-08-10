@@ -1,3 +1,4 @@
+import Onboarding from "@/app/onboarding";
 import RankingBoard from "@/app/ranking-board";
 import { categories, dailyTrends, watchItems } from "@/lib/trend-data";
 import CollectionControls from "@/components/collection-controls";
@@ -6,6 +7,8 @@ export default function HomePage() {
   return (
     <div className="page-shell">
       <main className="app-main">
+        <Onboarding categories={categories} />
+
         <RankingBoard daily={dailyTrends} categories={categories} />
 
         <CollectionControls />

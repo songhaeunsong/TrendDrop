@@ -1,9 +1,18 @@
 import Link from "next/link";
 
+import SourceCard from "./source-card";
+import StreamingSummary from "./streaming-summary";
 import "./trend.css";
 
 type Reason = {
   source: string;
+  text: string;
+};
+
+type TimelineEvent = {
+  time: string;
+  channel: string;
+  kind: "spark" | "spread" | "surge" | "search";
   text: string;
 };
 
@@ -12,6 +21,8 @@ type RelatedItem = {
   title: string;
   metric: string;
   kind: string;
+  excerpt: string;
+  url: string;
 };
 
 type TrendDetail = {
@@ -25,6 +36,7 @@ type TrendDetail = {
   updatedAgo: string;
   summary: string;
   reasons: Reason[];
+  timeline: TimelineEvent[];
   series: number[];
   days: string[];
   related: RelatedItem[];
@@ -48,12 +60,59 @@ const trend: TrendDetail = {
     { source: "Facebook Groups", text: "다이어트·헬스 커뮤니티에서 제품 비교·후기 댓글이 급증" },
     { source: "YouTube Shorts", text: "체형관리 브이로그에 자연스럽게 삽입되며 연관 검색 동반 상승" },
   ],
+  timeline: [
+    {
+      time: "07/15 09:20",
+      channel: "Instagram Reels",
+      kind: "spark",
+      text: "'10초 홈카페' 레시피 릴스가 저장 급증으로 첫 포착",
+    },
+    {
+      time: "07/15 12:40",
+      channel: "Facebook Groups",
+      kind: "spread",
+      text: "다이어트 커뮤니티에서 제품 비교·후기 댓글 확산",
+    },
+    {
+      time: "07/15 18:10",
+      channel: "YouTube Shorts",
+      kind: "surge",
+      text: "체형관리 브이로그에 삽입되며 연관 검색 동반 급등",
+    },
+    {
+      time: "오늘 02:00",
+      channel: "검색",
+      kind: "search",
+      text: "구매 탐색 검색어로 전환되기 시작",
+    },
+  ],
   series: [22, 26, 24, 41, 58, 74, 100],
   days: ["월", "화", "수", "목", "금", "토", "일"],
   related: [
-    { platform: "Instagram", title: "제로슈가 홈카페 3종 레시피", metric: "저장 12.4K", kind: "릴스" },
-    { platform: "YouTube", title: "다이어트 중 음료 뭐 마셔?", metric: "조회 84만", kind: "쇼츠" },
-    { platform: "Facebook", title: "제로 아이스티 실측 후기 모음", metric: "댓글 2.1K", kind: "그룹" },
+    {
+      platform: "Instagram",
+      title: "제로슈가 홈카페 3종 레시피",
+      metric: "저장 12.4K",
+      kind: "릴스",
+      excerpt: "설탕 0인데 이 맛? 아이스티 베이스에 탄산수만 넣으면 끝. 저장해두고 매일 만들어 먹는 중이에요.",
+      url: "#",
+    },
+    {
+      platform: "YouTube",
+      title: "다이어트 중 음료 뭐 마셔?",
+      metric: "조회 84만",
+      kind: "쇼츠",
+      excerpt: "제로 아이스티는 칼로리 부담 없이 포만감까지. 운동 전후로 물 대신 마시니까 확실히 덜 지쳐요.",
+      url: "#",
+    },
+    {
+      platform: "Facebook",
+      title: "제로 아이스티 실측 후기 모음",
+      metric: "댓글 2.1K",
+      kind: "그룹",
+      excerpt: "편의점별 가격이랑 당류 실측해서 표로 정리했어요. 결론은 홈카페가 제일 싸고 조절하기 편함.",
+      url: "#",
+    },
   ],
   keywords: ["#다이어트음료", "#홈카페", "#저칼로리", "#제로슈가", "#여름음료", "#헬스간식"],
   channels: ["Instagram Reels", "Facebook Groups", "YouTube Shorts"],
@@ -192,7 +251,7 @@ export default function TrendDetailPage() {
 
         <section className="td-panel">
           <p className="td-eyebrow">AI 요약 · 왜 뜨나</p>
-          <p className="td-summary">{trend.summary}</p>
+          <StreamingSummary text={trend.summary} />
           <ol className="td-reasons">
             {trend.reasons.map((reason) => (
               <li key={reason.source}>
@@ -204,21 +263,44 @@ export default function TrendDetailPage() {
         </section>
 
         <section className="td-panel">
-          <h2 className="td-h2">관련 콘텐츠</h2>
-          <div className="td-related-grid">
+          <p className="td-eyebrow">근거 타임라인 · 언제 어디서 먼저 터졌나</p>
+          <p className="td-tl-lead">
+            검색이 아니라 <strong>저장·공유</strong>가 먼저 튀는 급상승 패턴. SNS 반응이 앞서고 검색은 뒤따릅니다.
+          </p>
+          <ol className="td-timeline">
+            {trend.timeline.map((event, index) => (
+              <li className={`td-tl-item td-tl-${event.kind}`} key={`${event.time}-${index}`}>
+                <span className="td-tl-marker" aria-hidden="true">
+                  <span className="td-tl-dot" />
+                </span>
+                <div className="td-tl-body">
+                  <div className="td-tl-meta">
+                    <span className="td-tl-time">{event.time}</span>
+                    <span className="td-tl-channel">{event.channel}</span>
+                  </div>
+                  <p className="td-tl-text">{event.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="td-panel">
+          <h2 className="td-h2">근거 콘텐츠</h2>
+          <p className="td-source-note">위 AI 요약은 아래 실제 게시물 근거에서 도출됐습니다.</p>
+          <div className="td-source-grid">
             {trend.related.map((item) => (
-              <article className="td-related-card" key={item.title}>
-                <div className={`td-thumb ${platformClass(item.platform)}`}>
-                  <span>{platformGlyph(item.platform)}</span>
-                </div>
-                <div className="td-related-body">
-                  <p className="td-related-platform">
-                    {item.platform} · {item.kind}
-                  </p>
-                  <p className="td-related-title">{item.title}</p>
-                  <p className="td-related-metric">{item.metric}</p>
-                </div>
-              </article>
+              <SourceCard
+                key={item.title}
+                platform={item.platform}
+                kind={item.kind}
+                title={item.title}
+                metric={item.metric}
+                excerpt={item.excerpt}
+                url={item.url}
+                glyph={platformGlyph(item.platform)}
+                thumbClass={platformClass(item.platform)}
+              />
             ))}
           </div>
         </section>

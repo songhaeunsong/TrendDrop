@@ -38,13 +38,18 @@ type VHeApiResponse = {
 // 페이지는 DB를 직접 조회하지 않고 백엔드 API(GET /api/admin/collect/pipeline-v-he)에서 값을 가져온다.
 async function fetchLatestCollection(): Promise<VHeApiResponse> {
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const response = await fetch(`${base}/api/admin/collect/pipeline-v-he`, { cache: "no-store" });
+  const empty: VHeApiResponse = { configured: false, runs: [], latestRunId: null, keywords: [] };
 
-  if (!response.ok) {
-    return { configured: false, runs: [], latestRunId: null, keywords: [] };
+  try {
+    const response = await fetch(`${base}/api/admin/collect/pipeline-v-he`, { cache: "no-store" });
+    if (!response.ok) {
+      return empty;
+    }
+    return response.json();
+  } catch {
+    // 네트워크 실패(다른 포트·프로덕션·API 미기동 등)에도 500 대신 빈 상태로 렌더한다.
+    return empty;
   }
-
-  return response.json();
 }
 
 function summarizeApiCallLog(log: ApiCallLogEntry[] | null) {

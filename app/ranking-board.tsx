@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { CATEGORY_EVENT, PENDING_CATEGORY_KEY } from "@/app/command-palette";
+import { INTERESTS_EVENT, INTERESTS_KEY } from "@/app/onboarding";
 import RollingNumber from "@/app/rolling-number";
 import { getRankDelta, type TrendItem } from "@/lib/trend-data";
 import { getTickerItems, snapshots } from "@/lib/trend-timeline";
@@ -36,6 +37,15 @@ const FLIP_MS = 520;
 const FLIP_EASING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 const PULL_THRESHOLD = 70;
 const LATEST_INDEX = snapshots.length - 1;
+const SAVED_KEY = "td-saved-keywords";
+const PREVIEW_DELAY_MS = 250;
+/** 관심 키워드 "급상승" 판정: NEW이거나 5계단 이상 상승. */
+const SURGE_JUMP = 5;
+
+function isSurge(item: Row): boolean {
+  const delta = getRankDelta(item);
+  return delta.kind === "new" || (delta.kind === "up" && delta.diff >= SURGE_JUMP);
+}
 
 // SSR에서는 useLayoutEffect가 경고를 내므로 서버에선 useEffect로 대체한다.
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -153,6 +163,11 @@ export default function RankingBoard({ daily, categories }: Props) {
   const [live, setLive] = useState(true);
   const [playing, setPlaying] = useState(false);
   const [pull, setPull] = useState(0);
+  // 마운트 후 localStorage에서 채워지는 값들 — SSR 초기값은 비어 있어 하이드레이션 안전.
+  const [saved, setSaved] = useState<string[]>([]);
+  const [interests, setInterests] = useState<string[]>([]);
+  const [myFeed, setMyFeed] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLElement | null>(null);
   const rowRefs = useRef(new Map<string, HTMLLIElement>());
@@ -160,15 +175,36 @@ export default function RankingBoard({ daily, categories }: Props) {
   const isFirstLayout = useRef(true);
   const pullRef = useRef(0);
   const pendingScroll = useRef<string | null>(null);
+  const hoverTimer = useRef<number | null>(null);
 
   const isRealtime = period === "realtime";
   const snapshot = snapshots[snapshotIndex];
 
   const rows: Row[] = isRealtime ? snapshot.items : daily;
 
-  const visible = useMemo(
-    () => (category === "전체" ? rows : rows.filter((row) => row.category === category)),
-    [rows, category],
+  // 프리뷰의 "왜 뜨나" 한 줄은 daily(TrendItem.reason)에서 가져온다(스냅샷 아이템엔 reason 없음).
+  const reasonByKeyword = useMemo(
+    () => new Map(daily.map((item) => [item.keyword, item.reason])),
+    [daily],
+  );
+  const rowByKeyword = useMemo(() => new Map(rows.map((row) => [row.keyword, row])), [rows]);
+
+  const activeInterests = useMemo(
+    () => interests.filter((name) => categories.includes(name)),
+    [interests, categories],
+  );
+
+  const visible = useMemo(() => {
+    if (myFeed && activeInterests.length > 0) {
+      return rows.filter((row) => activeInterests.includes(row.category));
+    }
+    return category === "전체" ? rows : rows.filter((row) => row.category === category);
+  }, [rows, category, myFeed, activeInterests]);
+
+  // 관심 키워드 칩용: 저장된 키워드 중 현재 데이터에 존재하는 것만
+  const savedRows = useMemo(
+    () => saved.map((keyword) => rowByKeyword.get(keyword)).filter((row): row is Row => Boolean(row)),
+    [saved, rowByKeyword],
   );
 
   const tickerItems = useMemo(
@@ -189,11 +225,12 @@ export default function RankingBoard({ daily, categories }: Props) {
   }, []);
 
   /* --- LIVE 자동 갱신 (시간 진행은 오직 여기서만 일어난다) --- */
+  /* 프리뷰가 열려 있는 동안(=행 호버 중)엔 자동 진행을 멈춘다 — 행이 밑으로 사라지며 프리뷰가 붕 뜨는 것 방지. */
   useEffect(() => {
-    if (!live || !isRealtime) return;
+    if (!live || !isRealtime || hovered !== null) return;
     const timer = window.setInterval(advance, LIVE_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [live, isRealtime, advance]);
+  }, [live, isRealtime, advance, hovered]);
 
   /* --- 타임랩스 재생: 현재 지점부터 1.2초 간격으로 진행, 최신에 닿으면 자동 정지 --- */
   useEffect(() => {
@@ -233,6 +270,71 @@ export default function RankingBoard({ daily, categories }: Props) {
     });
     return () => cancelAnimationFrame(frame);
   }, [categories]);
+
+  /* --- 마운트 후 저장된 관심 키워드 · 관심 카테고리 로드 (setState는 rAF 콜백에서) --- */
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      try {
+        const rawSaved = localStorage.getItem(SAVED_KEY);
+        const parsedSaved = rawSaved ? JSON.parse(rawSaved) : [];
+        if (Array.isArray(parsedSaved)) {
+          setSaved(parsedSaved.filter((item): item is string => typeof item === "string"));
+        }
+        const rawInterests = localStorage.getItem(INTERESTS_KEY);
+        const parsedInterests = rawInterests ? JSON.parse(rawInterests) : [];
+        if (Array.isArray(parsedInterests)) {
+          setInterests(parsedInterests.filter((item): item is string => typeof item === "string"));
+        }
+      } catch {
+        // 파싱/접근 실패 시 기본(빈) 상태 유지
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  /* --- 온보딩 완료 시 관심 카테고리 반영 (핸들러 콜백에서 setState) --- */
+  useEffect(() => {
+    const onInterests = (event: Event) => {
+      const detail = (event as CustomEvent<string[]>).detail;
+      if (Array.isArray(detail)) {
+        setInterests(detail.filter((item): item is string => typeof item === "string"));
+      }
+    };
+    window.addEventListener(INTERESTS_EVENT, onInterests);
+    return () => window.removeEventListener(INTERESTS_EVENT, onInterests);
+  }, []);
+
+  const toggleSave = useCallback((keyword: string) => {
+    setSaved((current) => {
+      const next = current.includes(keyword)
+        ? current.filter((item) => item !== keyword)
+        : [...current, keyword];
+      try {
+        localStorage.setItem(SAVED_KEY, JSON.stringify(next));
+      } catch {
+        // 저장 실패해도 화면 상태는 갱신
+      }
+      return next;
+    });
+  }, []);
+
+  /* --- 호버 프리뷰: 250ms 지연 후 표시. 타임랩스 재생 중엔 억제. --- */
+  const openPreview = useCallback(
+    (keyword: string) => {
+      if (playing) return;
+      if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+      hoverTimer.current = window.setTimeout(() => setHovered(keyword), PREVIEW_DELAY_MS);
+    },
+    [playing],
+  );
+
+  const closePreview = useCallback(() => {
+    if (hoverTimer.current) {
+      window.clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setHovered(null);
+  }, []);
 
   /* --- FLIP: 이전 위치 → 새 위치로 미끄러지듯 이동 --- */
   useIsomorphicLayoutEffect(() => {
@@ -565,6 +667,28 @@ export default function RankingBoard({ daily, categories }: Props) {
         </div>
       </div>
 
+      {savedRows.length > 0 && (
+        <div className="saved-section" aria-label="관심 키워드">
+          <p className="saved-title">관심 키워드</p>
+          <div className="saved-chips">
+            {savedRows.map((row) => (
+              <button
+                key={row.keyword}
+                type="button"
+                className={`saved-chip${isSurge(row) ? " is-surge" : ""}`}
+                onClick={() => scrollToKeyword(row.keyword)}
+                title={`${row.keyword} · 현재 ${row.rank}위`}
+              >
+                <span className="saved-chip-name">{row.keyword}</span>
+                <span className="saved-chip-rank">{row.rank}위</span>
+                <DeltaBadge item={row} />
+                {isSurge(row) && <span className="saved-surge">급상승</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="board-controls">
         <div className="period-toggle" role="group" aria-label="집계 기간">
           {PERIODS.map((option) => (
@@ -581,13 +705,27 @@ export default function RankingBoard({ daily, categories }: Props) {
         </div>
 
         <div className="category-tabs" role="group" aria-label="카테고리 필터">
+          {activeInterests.length > 0 && (
+            <button
+              type="button"
+              className="category-tab is-feed"
+              aria-pressed={myFeed}
+              onClick={() => setMyFeed((value) => !value)}
+              title={`내 피드 · ${activeInterests.join("·")}`}
+            >
+              ★ 내 피드
+            </button>
+          )}
           {categories.map((name) => (
             <button
               key={name}
               type="button"
               className="category-tab"
-              aria-pressed={category === name}
-              onClick={() => setCategory(name)}
+              aria-pressed={!myFeed && category === name}
+              onClick={() => {
+                setMyFeed(false);
+                setCategory(name);
+              }}
             >
               {name}
             </button>
@@ -599,36 +737,73 @@ export default function RankingBoard({ daily, categories }: Props) {
         <p className="board-empty">선택한 카테고리에 해당하는 트렌드가 아직 없습니다.</p>
       ) : (
         <ol className="rank-list">
-          {visible.map((item) => (
-            <li
-              key={item.keyword}
-              className="rank-row"
-              ref={(element) => {
-                if (element) rowRefs.current.set(item.keyword, element);
-                else rowRefs.current.delete(item.keyword);
-              }}
-            >
-              <Link href="/trend" className="rank-link">
-                <span className={`rank-num${item.rank <= 3 ? " is-top" : ""}`}>{item.rank}</span>
+          {visible.map((item) => {
+            const isSaved = saved.includes(item.keyword);
+            const showPreview = hovered === item.keyword && !playing;
+            return (
+              <li
+                key={item.keyword}
+                className={`rank-row${showPreview ? " has-preview" : ""}`}
+                ref={(element) => {
+                  if (element) rowRefs.current.set(item.keyword, element);
+                  else rowRefs.current.delete(item.keyword);
+                }}
+                onMouseEnter={() => openPreview(item.keyword)}
+                onMouseLeave={closePreview}
+              >
+                <Link href="/trend" className="rank-link">
+                  <span className={`rank-num${item.rank <= 3 ? " is-top" : ""}`}>{item.rank}</span>
 
-                <span className="rank-main">
-                  <span className="rank-keyword">{item.keyword}</span>
-                  <span className="rank-cat">{item.category}</span>
-                </span>
+                  <span className="rank-main">
+                    <span className="rank-keyword">{item.keyword}</span>
+                    <span className="rank-cat">{item.category}</span>
+                  </span>
 
-                {item.spark ? <MiniSpark points={item.spark} /> : null}
+                  {item.spark ? <MiniSpark points={item.spark} /> : null}
 
-                <DeltaBadge item={item} />
+                  <DeltaBadge item={item} />
 
-                <RollingNumber
-                  value={growthValue(item.growth)}
-                  prefix="+"
-                  suffix="%"
-                  className="rank-growth"
-                />
-              </Link>
-            </li>
-          ))}
+                  <RollingNumber
+                    value={growthValue(item.growth)}
+                    prefix="+"
+                    suffix="%"
+                    className="rank-growth"
+                  />
+                </Link>
+
+                <button
+                  type="button"
+                  className={`rank-star${isSaved ? " is-saved" : ""}`}
+                  aria-pressed={isSaved}
+                  aria-label={isSaved ? `${item.keyword} 관심 해제` : `${item.keyword} 관심 저장`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    toggleSave(item.keyword);
+                  }}
+                >
+                  <span aria-hidden="true">{isSaved ? "★" : "☆"}</span>
+                </button>
+
+                {showPreview && (
+                  <div className="rank-preview" role="presentation">
+                    <div className="rank-preview-head">
+                      <span className="rank-preview-key">{item.keyword}</span>
+                      <span className="rank-preview-cat">{item.category}</span>
+                    </div>
+                    <div className="rank-preview-metrics">
+                      <span className="rank-preview-growth">+{growthValue(item.growth)}%</span>
+                      {item.spark ? <MiniSpark points={item.spark} /> : null}
+                    </div>
+                    <p className="rank-preview-why">
+                      {reasonByKeyword.get(item.keyword) ?? "SNS에서 반응이 빠르게 늘고 있습니다."}
+                    </p>
+                    <span className="rank-preview-cta">상세 보기 →</span>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ol>
       )}
     </section>
