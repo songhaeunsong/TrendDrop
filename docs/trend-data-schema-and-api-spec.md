@@ -145,6 +145,8 @@ flowchart LR
 | `users`           | `id`, `email`, `created_at`               | 초기엔 익명 세션으로 대체 가능 |
 | `watchlist_items` | `id`, `user_id`, `keyword_id`, `added_at` | 사용자가 저장한 키워드         |
 
+> 지금 프론트엔 저장 UI가 두 갈래로 따로 존재합니다 — 홈 "워치리스트 패널"(`watchItems` mock 배열)과 랭킹 행의 "관심 키워드 즐겨찾기 ★"(`localStorage`의 `td-saved-keywords`). 둘 다 이 `watchlist_items` 하나로 귀결되어야 할 같은 개념이라, 로그인이 붙기 전까지는 즐겨찾기를 `localStorage`에 남겨두는 게 맞지만 **API/화면을 합칠 때 두 UI를 하나의 저장 목록으로 통합**해야 합니다(중복 관리 UI를 남기지 않도록).
+
 ### 2.10 `keyword_verdicts` — 키워드 채택 판정 캐시
 
 원문에서 뽑힌 단어를 그대로 `keywords`로 만들면 토큰화 손상(`오디세`→`오디세이`)이나 노이즈(`같아서`, `대한` 등 문법 조각)가 섞입니다. LLM이 이를 판정하고, 그 결과를 term 단위로 캐싱해두는 테이블입니다. **채택(`keep = true`)된 term만 `keywords`로 승격됩니다.**
