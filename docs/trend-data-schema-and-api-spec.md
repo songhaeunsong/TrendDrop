@@ -100,7 +100,6 @@ flowchart LR
 | `id`           | bigint PK            |                                                                                       |
 | `keyword_id`   | FK → keywords        |                                                                                       |
 | `run_id`       | FK → collection_runs | 이 스냅샷이 속한 실행(=시점)                                                          |
-| `source_id`    | FK → sources         |                                                                                       |
 | `rank`         | int                  | 해당 run 안에서의 순위(1이 1위)                                                       |
 | `score`        | int (0~100)          | 트렌드 점수. 랭킹·정렬의 기준값                                                       |
 | `growth_rate`  | string               | 표시용 문자열 (예: `+182%`, `1,200회 언급`) — 사람이 읽는 라벨이지 계산용 수치가 아님 |
@@ -114,6 +113,8 @@ flowchart LR
 | `captured_at`  | timestamp            | 실제 수집 시각 (`run.started_at`과 별개로 있을 수 있음)                               |
 
 > **`score` vs `rank` 구분**: `rank`는 해당 시점(run) 안에서의 상대 순위, `score`는 절대 점수입니다. 시계열 차트는 `score`를, 등락 배지(▲▼NEW)는 이전 run 대비 `rank` 변화를 씁니다.
+>
+> **단일 `source_id` 컬럼을 두지 않는 이유**: 한 키워드가 같은 시점에 여러 소스(Google Trends + YouTube 등)에서 동시에 잡히는 게 정상이라 "대표 소스 하나"를 FK로 고를 기준이 없습니다. 소스별 기여는 `reasons`(배열)와 `source_label`(사람이 읽는 요약 문자열)이 이미 표현하므로, 단일 FK는 오히려 정보를 잃습니다.
 
 ### 2.7 `trend_contents` — 키워드에 딸린 콘텐츠(뉴스/영상 등)
 

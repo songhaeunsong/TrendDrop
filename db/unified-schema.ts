@@ -109,7 +109,6 @@ export const trendSnapshots = pgTable("trend_snapshots", {
   id: bigint({ mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
   keywordId: integer("keyword_id").notNull().references(() => keywords.id),
   runId: integer("run_id").notNull().references(() => collectionRuns.id),
-  sourceId: integer("source_id").references(() => sources.id),
   rank: integer("rank"),
   score: integer("score"),
   growthRate: varchar("growth_rate", { length: 32 }),
@@ -118,6 +117,8 @@ export const trendSnapshots = pgTable("trend_snapshots", {
   mentions: integer("mentions"),
   summary: text("summary"),
   // [{ source, text, sample?, weight? }] — sample: 근거 원문 인용, weight: 소스별 기여 점수.
+  // 단일 source_id FK를 두지 않는 이유: 한 키워드가 여러 소스에서 동시에 잡히는 게 정상이라
+  // "대표 소스 하나"를 고를 기준이 없다. 소스별 기여는 이 reasons 배열이 표현한다.
   reasons: jsonb("reasons"),
   sourceLabel: varchar("source_label", { length: 200 }),
   externalRef: varchar("external_ref", { length: 120 }),

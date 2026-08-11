@@ -155,7 +155,6 @@
 erDiagram
   CATEGORIES ||--o{ KEYWORDS : classifies
   SOURCES ||--o{ RAW_SIGNALS : produces
-  SOURCES ||--o{ TREND_SNAPSHOTS : attributes
   COLLECTION_RUNS ||--o{ RAW_SIGNALS : captures
   COLLECTION_RUNS ||--o{ TREND_SNAPSHOTS : produces
   KEYWORDS ||--o{ TREND_SNAPSHOTS : tracks
@@ -218,7 +217,6 @@ erDiagram
     bigint id PK
     int keyword_id FK
     int run_id FK
-    int source_id FK
     int rank
     int score
     varchar growth_rate
@@ -280,7 +278,7 @@ erDiagram
 | `categories` 테이블 신설, `keywords.category_id` FK로 전환                          | 자유 텍스트 → 마스터 목록. `sort_order`로 UI 탭 순서 고정, 필터 UI가 "존재하는 값"이 아니라 "정의된 값"을 기준으로 렌더                   |
 | `collection_runs`를 마스터 개념으로 승격(vhe 전용 → 공통), `pipeline` 컬럼으로 구분 | master/vhe 파이프라인이 같은 실행 로그·API 호출 기록 구조를 공유하도록                                                                   |
 | `raw_signals`도 공통화                                                              | 재수집 시 텍스트 해시 dedup은 모든 파이프라인에 유용한 기능이라 master 전용 제외할 이유 없음                                              |
-| `trend_snapshots.run_id`, `rank`, `source_id` 추가                                  | run 단위로 "이 실행에서의 순위"를 남겨야 `/explore` 히트맵·A/B 비교가 실제 데이터로 그려짐(5.2 참고)                                      |
+| `trend_snapshots.run_id`, `rank` 추가                                               | run 단위로 "이 실행에서의 순위"를 남겨야 `/explore` 히트맵·A/B 비교가 실제 데이터로 그려짐(5.2 참고). (`source_id`는 검토 중 제외 — 한 키워드가 여러 소스에서 동시에 잡힐 수 있어 단일 FK로 못 담고, `reasons`/`source_label`이 이미 그 정보를 표현함) |
 | `trend_snapshots.reason`(text) → `reasons`(jsonb)                                   | `/trend` 상세의 "AI 요약 · 왜 뜨나" 섹션이 `{source, text}` 배열을 요구(5.3 참고) — 단일 텍스트로는 소스별 근거를 분리해 렌더링할 수 없음 |
 | `trend_contents.thumbnail_url`, `metric_label` 추가                                 | 상세 페이지 "관련 콘텐츠" 카드가 썸네일과 참여 지표 문자열(예: "저장 12.4K")을 요구하는데 기존 컬럼에 없던 필드(5.3 참고)                 |
 | `keyword_relations` 신설                                                            | 상세 페이지 "연관 키워드" 칩을 mock 배열이 아니라 co-occurrence 점수 기반으로 생성                                                        |

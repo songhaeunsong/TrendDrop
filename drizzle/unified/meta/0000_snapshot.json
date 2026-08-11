@@ -1,5 +1,5 @@
 {
-  "id": "f6db5d5b-79b2-48ce-9147-500afba3291d",
+  "id": "cc973e8c-422a-40db-ba23-ac3f993fa684",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -790,12 +790,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "source_id": {
-          "name": "source_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "rank": {
           "name": "rank",
           "type": "integer",
@@ -885,19 +879,6 @@
           "tableTo": "collection_runs",
           "columnsFrom": [
             "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "trend_snapshots_source_id_sources_id_fk": {
-          "name": "trend_snapshots_source_id_sources_id_fk",
-          "tableFrom": "trend_snapshots",
-          "tableTo": "sources",
-          "columnsFrom": [
-            "source_id"
           ],
           "columnsTo": [
             "id"

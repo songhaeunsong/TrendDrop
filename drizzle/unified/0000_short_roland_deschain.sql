@@ -88,7 +88,6 @@ CREATE TABLE "trend_snapshots" (
 	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "trend_snapshots_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"keyword_id" integer NOT NULL,
 	"run_id" integer NOT NULL,
-	"source_id" integer,
 	"rank" integer,
 	"score" integer,
 	"growth_rate" varchar(32),
@@ -124,7 +123,6 @@ ALTER TABLE "raw_signals" ADD CONSTRAINT "raw_signals_source_id_sources_id_fk" F
 ALTER TABLE "trend_contents" ADD CONSTRAINT "trend_contents_keyword_id_keywords_id_fk" FOREIGN KEY ("keyword_id") REFERENCES "public"."keywords"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "trend_snapshots" ADD CONSTRAINT "trend_snapshots_keyword_id_keywords_id_fk" FOREIGN KEY ("keyword_id") REFERENCES "public"."keywords"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "trend_snapshots" ADD CONSTRAINT "trend_snapshots_run_id_collection_runs_id_fk" FOREIGN KEY ("run_id") REFERENCES "public"."collection_runs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "trend_snapshots" ADD CONSTRAINT "trend_snapshots_source_id_sources_id_fk" FOREIGN KEY ("source_id") REFERENCES "public"."sources"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "watchlist_items" ADD CONSTRAINT "watchlist_items_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "watchlist_items" ADD CONSTRAINT "watchlist_items_keyword_id_keywords_id_fk" FOREIGN KEY ("keyword_id") REFERENCES "public"."keywords"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "categories_name_idx" ON "categories" USING btree ("name");--> statement-breakpoint
