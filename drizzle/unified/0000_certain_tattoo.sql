@@ -104,7 +104,11 @@ CREATE TABLE "trend_snapshots" (
 CREATE TABLE "users" (
 	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "users_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"email" varchar(200) NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"password_hash" text,
+	"name" varchar(80),
+	"email_verified_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "watchlist_items" (

@@ -250,7 +250,11 @@ erDiagram
   USERS {
     int id PK
     varchar email UK
+    text password_hash
+    varchar name
+    timestamptz email_verified_at
     timestamptz created_at
+    timestamptz updated_at
   }
   WATCHLIST_ITEMS {
     int id PK

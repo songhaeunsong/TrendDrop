@@ -157,7 +157,13 @@ export const users = pgTable(
   {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     email: varchar("email", { length: 200 }).notNull(),
+    // 해시된 비밀번호만 저장한다 — 평문 저장 금지. 소셜 로그인 등 비밀번호 없는 가입 경로를
+    // 열어둘 수 있어 nullable로 둔다.
+    passwordHash: text("password_hash"),
+    name: varchar("name", { length: 80 }),
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
   },
   (table) => ({
     userEmailIdx: uniqueIndex("users_email_idx").on(table.email),

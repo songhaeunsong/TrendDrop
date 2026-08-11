@@ -143,7 +143,7 @@ flowchart LR
 
 | 테이블            | 컬럼                                      | 설명                           |
 | ----------------- | ----------------------------------------- | ------------------------------ |
-| `users`           | `id`, `email`, `created_at`               | 초기엔 익명 세션으로 대체 가능 |
+| `users`           | `id`, `email`, `password_hash`, `name`, `email_verified_at`, `created_at`, `updated_at` | 초기엔 익명 세션으로 대체 가능. `password_hash`는 해시된 값만 저장(평문 금지), 소셜 로그인 등을 열어두기 위해 nullable |
 | `watchlist_items` | `id`, `user_id`, `keyword_id`, `added_at` | 사용자가 저장한 키워드         |
 
 > 지금 프론트엔 저장 UI가 두 갈래로 따로 존재합니다 — 홈 "워치리스트 패널"(`watchItems` mock 배열)과 랭킹 행의 "관심 키워드 즐겨찾기 ★"(`localStorage`의 `td-saved-keywords`). 둘 다 이 `watchlist_items` 하나로 귀결되어야 할 같은 개념이라, 로그인이 붙기 전까지는 즐겨찾기를 `localStorage`에 남겨두는 게 맞지만 **API/화면을 합칠 때 두 UI를 하나의 저장 목록으로 통합**해야 합니다(중복 관리 UI를 남기지 않도록).
