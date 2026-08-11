@@ -162,6 +162,7 @@ erDiagram
   KEYWORDS ||--o{ KEYWORD_RELATIONS : "related to"
   KEYWORDS ||--o{ WATCHLIST_ITEMS : "saved as"
   USERS ||--o{ WATCHLIST_ITEMS : owns
+  KEYWORD_VERDICTS |o--o| KEYWORDS : "promotes to (canonical → term)"
 
   CATEGORIES {
     int id PK
@@ -186,6 +187,10 @@ erDiagram
     int keyword_count
     jsonb api_call_log
     text error_message
+    timestamptz bucket_at
+    int window_hours
+    int buckets
+    boolean filtered
   }
   KEYWORDS {
     int id PK
@@ -199,11 +204,13 @@ erDiagram
   RAW_SIGNALS {
     bigint id PK
     int run_id FK
+    int source_id FK
     varchar source
     text text
     varchar text_hash
     varchar video_id
     jsonb meta
+    timestamptz bucket_at
     timestamptz captured_at
   }
   TREND_SNAPSHOTS {
@@ -215,6 +222,7 @@ erDiagram
     int score
     varchar growth_rate
     varchar velocity
+    int mentions
     text summary
     jsonb reasons
     varchar source_label
@@ -251,6 +259,16 @@ erDiagram
     int keyword_id FK
     timestamptz added_at
   }
+  KEYWORD_VERDICTS {
+    varchar term PK
+    boolean keep
+    varchar canonical
+    varchar content_type
+    text reason
+    text sample
+    varchar model
+    timestamptz decided_at
+  }
 ```
 
 ### 6.2 기존 스키마 대비 변경점
@@ -268,6 +286,12 @@ erDiagram
 | `users`, `watchlist_items` 신설                                                     | 워치리스트를 실제 저장 기능으로 만들려면 최소한의 계정 개념 필요(익명 디바이스 토큰으로 시작해도 무방)                                    |
 | `varchar(500)` → `text` (url류)                                                     | 유튜브/뉴스 URL에 트래킹 파라미터가 붙으면 500자를 넘는 경우가 실제로 있음                                                                |
 | PK를 `bigint`로(스냅샷/콘텐츠/신호)                                                 | 시계열 수집을 촘촘하게(예: 시간당) 돌리면 `integer` 범위를 오래 못 감                                                                     |
+| `collection_runs.bucket_at`/`window_hours`/`buckets`/`filtered` 추가                | `trend-rising` 파이프라인(PR #23)에서 검증된 필드. 실행이 참조한 데이터 기준 시각·집계 창 길이·창 내 실제 버킷 수·LLM 필터 적용 여부를 남겨야 수집 누락 감지·결과 재현이 가능      |
+| `raw_signals.source_id`(FK → sources) 추가                                          | 기존 `source`(신호 종류)만으로는 다중 커뮤니티 소스가 늘어날 때 "어느 사이트"인지 구분 불가. 이미 그려진 `SOURCES ||--o{ RAW_SIGNALS` 관계를 실제 컬럼으로 채움 |
+| `raw_signals.bucket_at` 추가                                                        | 수집이 귀속되는 1시간 버킷. 중복 제거(`UNIQUE(source_id, text_hash, bucket_at)`)와 체류시간 기반 가중치 계산에 필요                       |
+| `trend_snapshots.mentions` 추가                                                     | `growth_rate` 같은 표시용 문자열의 근거가 되는 원시 언급 횟수(raw count) — 표시값만 있고 원인 수치가 없던 문제 보완                       |
+| `trend_snapshots.reasons`(jsonb) 항목에 `sample`/`weight` 추가                       | `sample`(근거 원문 인용)·`weight`(소스별 기여 점수)를 붙여 "왜 떴는지"를 재구성 없이 바로 보여줄 수 있게 함                              |
+| `keyword_verdicts` 테이블 신설                                                      | 토크나이저가 훼손한 단어 복원(`오디세`→`오디세이`), 노이즈 필터링(`같아서`, `대한` 등)을 LLM이 판정하고 캐싱하는 계층. `keep=true`인 term만 `keywords`로 승격 |
 
 ### 6.3 스키마 변경 없이 쿼리로 해결되는 것들
 
