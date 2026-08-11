@@ -1,28 +1,12 @@
 # TrendDrop 통합 스키마 기준 API 명세
 
 > **소스**: `db/unified-schema.ts`(실제 코드)와 `docs/feature-checklist.md`(화면별 기능 리스트)를
-> 다시 대조해서 작성한 문서입니다. 기존 [trend-data-schema-and-api-spec.md](trend-data-schema-and-api-spec.md)와
-> 목적은 같지만, 그 문서는 **설계 산문**을 코드보다 먼저 쓴 탓에 실제 `db/unified-schema.ts`와
-> 두 군데 어긋나 있었습니다(아래 0절). 이 문서는 코드를 1차 근거로 삼아 그 어긋남을 바로잡고,
-> `feature-checklist.md`가 요구하는 엔드포인트를 빠짐없이 담았는지 확인한 버전입니다.
+> 다시 대조해서 작성한 문서입니다. 검토 과정에서 코드와 문서가 어긋난 지점 두 곳(`trend_snapshots.source_id`,
+> `users` 인증 컬럼)을 찾았는데, 문서를 코드에 맞추는 대신 **코드 쪽을 의도에 맞게 고쳐서 반영**했습니다 —
+> `source_id`는 컬럼을 삭제했고, `users`에는 `password_hash`/`name`/`email_verified_at`/`updated_at`을
+> 추가했습니다. 아래 스키마 설명은 그 반영이 끝난 현재 코드 기준입니다.
 >
 > 이 문서도 **설계안(target spec)**이며, 실제 구현 상태는 기존 문서 6절 "현재 구현 상태" 표를 함께 참고하세요.
-
----
-
-## 0. 스키마 검토 메모 — 이번에 발견한 불일치
-
-기존 문서와 `db/unified-schema.ts`를 컬럼 단위로 다시 대조하면서 찾은 실제 차이입니다. 둘 다 코드가 문서보다
-"더 나간" 케이스라 **어느 쪽이 맞는지 팀 결정이 필요**합니다.
-
-| # | 항목 | 코드(`db/unified-schema.ts`) | 기존 문서 | 이 문서의 처리 |
-| - | ---- | ----------------------------- | --------- | -------------- |
-| 1 | `trend_snapshots.source_id` | `sourceId: integer("source_id").references(() => sources.id)` 컬럼이 **존재함** | 2.6절에 "한 키워드가 여러 소스에서 동시에 잡히는 게 정상이라 대표 소스 하나를 FK로 고를 기준이 없다"며 **컬럼을 두지 않기로 명시적으로 설명**함 | 아래 3.3절 응답에 `sourceId`를 넣지 않음(문서의 논리를 따름). 컬럼 자체를 스키마에서 뺄지, 아니면 "복수 소스 중 하나를 대표로 남기는 용도"로 의미를 재정의할지는 **별도 결정 필요** — 지금 상태로는 죽은 컬럼(dead column)입니다. |
-| 2 | `users` 테이블 | `id`, `email`, `created_at` **3개 컬럼뿐** | 2.9절 및 이전에 그린 ERD 아티팩트는 `password_hash`/`name`/`email_verified_at`/`updated_at`까지 포함한 7개 컬럼으로 설계함 | 6절에 "인증 관련 컬럼 미구현"으로 명시하고, 아래 3.6 워치리스트 API를 "로그인 붙기 전"과 "붙은 후" 두 단계로 나눠 기술 |
-
-> ⚠️ 참고로 (1)의 오류는 제가 앞서 만든 ERD 아티팩트(`db/unified-schema.ts`를 "그대로 시각화"했다고 설명한 것)에는
-> 반영돼 있지 않았고(트리 상 누락), (2)는 반대로 실제 코드에 없는 컬럼을 있는 것처럼 그렸습니다. 두 경우 모두
-> 이 문서 작성 과정에서 코드를 다시 직접 읽고 바로잡았습니다.
 
 ---
 
@@ -39,11 +23,12 @@
 | 2.1 히트맵 | `GET /api/explore/heatmap` | 3.5 |
 | 2.2 키워드 A/B 비교 | `GET /api/keywords/:slug/history` | 3.4 |
 | 3 트렌드 상세(히어로·핵심지표·스파크라인·AI요약·연관 키워드·감지 채널) | `GET /api/keywords/:slug` | 3.3 |
-| 3 근거 타임라인, 출처 카드 원문 발췌 | **엔드포인트 없음 — 스키마 자체가 없음(아래 4절)** | 4 |
+| 3 근거 타임라인, 출처 카드 원문 발췌 | `GET /api/keywords/:slug`(확장 — `timeline`/`related[].excerpt` 추가) | 3.3, 4 |
 | 카테고리 탭/히트맵 행 순서 | `GET /api/categories` | 3.1 |
 
-누락 없이 전부 매핑됩니다. 유일하게 빠지는 건 애초에 스키마 설계가 안 된 "근거 타임라인"과 "원문 발췌"인데, 이건
-엔드포인트를 만들 수 없는 게 아니라 **저장할 컬럼이 없어서** 못 만드는 상태입니다(4절 참고).
+`feature-checklist.md`의 모든 🟡 항목이 빠짐없이 엔드포인트를 갖습니다. "근거 타임라인"과 "원문 발췌"는
+기존 스키마엔 담을 컬럼이 없어 이전 버전에선 엔드포인트 없이 남겨뒀지만, 이번에 4절에 신규 테이블/컬럼을
+제안하고 3.3절 응답에 필드를 추가해 커버리지를 채웠습니다.
 
 ---
 
@@ -150,23 +135,26 @@ DB 소스: `keywords`(slug로 조회) + 최신 `trend_snapshots` 1건 + `trend_c
         "metric": "저장 12.4K",
         "kind": "릴스",
         "url": "https://...",
-        "thumbnailUrl": "https://..."
+        "thumbnailUrl": "https://...",
+        "excerpt": "\"제로슈가 스티비아 베이스로 만든 여름 홈카페 3종, 저장해두고 하나씩 따라 해보세요...\""
       }
     ],
     "keywords": ["#다이어트음료", "#홈카페", "#저칼로리"],
-    "channels": ["Instagram Reels", "Facebook Groups", "YouTube Shorts"]
+    "channels": ["Instagram Reels", "Facebook Groups", "YouTube Shorts"],
+    "timeline": [
+      { "channel": "Instagram Reels", "detectedAt": "2026-08-11T09:00:00Z", "label": "첫 레시피 릴스 업로드" },
+      { "channel": "Facebook Groups", "detectedAt": "2026-08-11T13:20:00Z", "label": "커뮤니티 공유 시작" },
+      { "channel": "YouTube Shorts", "detectedAt": "2026-08-12T02:10:00Z", "label": "쇼츠 재확산, 언급량 3배 증가" }
+    ]
   }
 }
 ```
 
 필드 매핑: `reasons`는 `trend_snapshots.reasons`(jsonb) 그대로, `related`는 `trend_contents`
-(`platform←kind`, `metric←metric_label`, `thumbnailUrl←thumbnail_url`), `keywords`(연관 키워드 칩)는
-`keyword_relations.related_keyword_id → keywords.term`을 `weight` 내림차순으로. `detectedAgo`는
-`keywords.first_seen_at`, `updatedAgo`는 `trend_snapshots.captured_at` 기준 상대 시간.
-
-> **`sourceId`를 응답에 넣지 않는 이유**: 0절 (1)번 참고 — `trend_snapshots.source_id` 컬럼은 스키마에
-> 존재하지만 "여러 소스가 동시에 기여"라는 설계 의도와 맞지 않아 API 응답에서는 제외합니다. 소스별 기여는
-> `reasons` 배열이 이미 표현합니다.
+(`platform←kind`, `metric←metric_label`, `thumbnailUrl←thumbnail_url`, `excerpt←excerpt` — **NEW 컬럼, 4.1절**),
+`keywords`(연관 키워드 칩)는 `keyword_relations.related_keyword_id → keywords.term`을 `weight` 내림차순으로.
+`detectedAgo`는 `keywords.first_seen_at`, `updatedAgo`는 `trend_snapshots.captured_at` 기준 상대 시간.
+`timeline`은 **신규 테이블 `trend_events`**(4.2절)를 `detected_at` 오름차순으로 조회.
 
 없는 slug 요청 시: `404 { "error": "keyword not found" }`
 
@@ -225,27 +213,53 @@ DB 소스: `trend_snapshots`를 `run_id` × `category_id`로 그룹핑해 카테
 
 DB 소스: `watchlist_items`(`user_id`, `keyword_id`) + `keywords` 조인.
 
-> **선행 조건 — 0절 (2)번 참고**: 지금 `users` 테이블엔 `id`/`email`/`created_at`만 있고 비밀번호·세션 관련
-> 컬럼이 없어 실제 로그인을 구현할 수 없는 상태입니다. 두 단계로 나눠 접근하는 걸 제안합니다.
-> 1. **1단계(최소)**: 로그인 없이 브라우저별 익명 `user_id`(쿠키에 발급한 UUID)만으로 `watchlist_items`를 채움 —
->    `users.password_hash` 등 인증 컬럼 없이 지금 스키마 그대로 가능.
-> 2. **2단계(로그인 도입 시)**: `users`에 `password_hash`/`email_verified_at` 등 인증 컬럼을 실제로 추가하고
->    익명 `user_id`를 로그인 계정에 병합.
+> **인증**: `users`에 `password_hash`/`email_verified_at` 등 인증 컬럼이 있어 이메일+비밀번호 로그인을
+> 그대로 구현할 수 있습니다. 로그인 세션에서 얻은 `user_id`로 위 세 엔드포인트를 호출하면 됩니다
+> (세션/토큰 발급 방식은 이 문서 범위 밖).
 >
 > `feature-checklist.md` 1.3절이 지적한 "홈 워치리스트 패널"과 "랭킹 행 ★ 즐겨찾기(`localStorage`)" 두 UI는
 > 이 API 하나로 반드시 통합해야 합니다(중복 저장 UI 금지).
 
 ---
 
-## 4. 아직 스키마가 없어서 못 만드는 엔드포인트
+## 4. 신규 제안 스키마 — 근거 타임라인 · 원문 발췌
 
-| 기능 | 필요한 것 | 상태 |
-| ---- | --------- | ---- |
-| `/trend` 근거 타임라인(언제 어디서 먼저 터졌는지 시간순 이벤트) | `trend_snapshots`는 run당 1행뿐이라 세분 이벤트 로그를 담을 테이블이 없음. 새 테이블 설계 필요(예: `trend_events(keyword_id, source, detected_at, note)`) | 미설계 |
-| 출처 카드 원문 발췌(`excerpt`) | `trend_contents`에 대응 컬럼 없음(`title`/`metric_label`/`thumbnail_url`만 존재). 컬럼 추가 필요 | 미설계 |
+`feature-checklist.md`에 커버리지 공백을 남기지 않기 위해, 기존 스키마에 없던 두 항목을 이번에 설계해서
+3.3절 응답에 편입시켰습니다. 아래 둘 다 **아직 `db/unified-schema.ts`에 없는 제안(proposal)**이며, 실제
+컬럼/테이블 추가는 팀 리뷰 후 진행해야 합니다.
 
-두 항목은 API 엔드포인트를 지금 만들어도 채울 데이터가 없으므로, 당분간 프론트에서 합성 데이터로 유지하는 게 맞습니다
-(`feature-checklist.md` 3장의 기존 경고와 동일한 결론).
+### 4.1 `trend_contents.excerpt` (컬럼 추가)
+
+| 컬럼 | 타입 | 설명 |
+| ---- | ---- | ---- |
+| `excerpt` | text, nullable | 출처 카드의 "원문 발췌 접기/펼치기"에 쓰는 인용문. 수집기가 원문에서 대표 문단/자막 일부를 그대로 저장 |
+
+기존 `trend_contents`(`title`/`url`/`thumbnail_url`/`metric_label`/`source`/`rank`/`published_at`)에 컬럼 하나만
+추가하면 되므로, 마이그레이션 부담이 가장 작은 항목입니다.
+
+### 4.2 `trend_events` (신규 테이블)
+
+| 컬럼 | 타입 | 설명 |
+| ---- | ---- | ---- |
+| `id` | bigint PK | — |
+| `keyword_id` | FK → keywords | — |
+| `channel` | varchar(80) | 이벤트가 감지된 채널 (예: `Instagram Reels`, `YouTube Shorts`) — 타임라인의 채널별 마커에 사용 |
+| `detected_at` | timestamptz | 이벤트가 감지된 시각. 타임라인 정렬 기준 |
+| `label` | text | 사람이 읽는 한 줄 설명 (예: "첫 레시피 릴스 업로드", "쇼츠 재확산, 언급량 3배 증가") |
+| `content_id` | FK → trend_contents, nullable | 특정 콘텐츠와 연결되는 이벤트면 참조(없으면 null) |
+
+`trend_snapshots`는 run당 1행뿐이라 "몇 시 몇 분에 어느 채널에서 처음 포착됐는지" 같은 세분 이벤트를 담을 곳이
+없었던 게 원래 문제였습니다. `trend_events`는 그 목적 하나만 위한 얇은 로그 테이블이라 `trend_snapshots`/
+`trend_contents`의 기존 구조에는 영향을 주지 않습니다.
+
+### 반영 위치
+
+두 스키마 모두 새 엔드포인트를 만들지 않고 **기존 `GET /api/keywords/:slug`(3.3절)에 필드를 추가**하는
+방식으로 노출합니다 — 이미 그 화면(`/trend/[slug]`)에서 근거 타임라인과 출처 카드를 같이 렌더링하므로,
+별도 API 호출 없이 한 번에 받는 게 프론트 구현이 더 간단합니다.
+
+> 컬럼/테이블이 실제로 추가되기 전까지는 `timeline`/`excerpt` 필드를 채울 데이터가 없으므로, 당분간
+> 프론트에서 합성 데이터로 유지하는 게 맞습니다 — 4.1/4.2가 실제 스키마에 반영된 뒤에 API가 이 필드를 채웁니다.
 
 ---
 
